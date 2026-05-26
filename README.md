@@ -2,6 +2,7 @@
 
 A free-hostable clinical utility for pasted chromosome microarray report excerpts. It extracts hg19 regions of homozygosity, sends only normalized chromosome 1-22/X intervals to a serverless API route, and returns disease genes whose HPO inheritance annotations match the interval: autosomal recessive for chromosomes 1-22 and X-linked recessive for `chrX`.
 
+Link: https://rohgenescoutapp-pat-o-s-projects.vercel.app 
 
 ## Important Notes
 

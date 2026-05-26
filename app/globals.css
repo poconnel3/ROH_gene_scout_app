@@ -448,6 +448,28 @@ h2 {
   font-style: italic;
 }
 
+.hpo-overflow-button {
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-style: italic;
+  padding: 0;
+  text-align: left;
+}
+
+.hpo-overflow-button:hover {
+  text-decoration: underline;
+}
+
+.hpo-overflow-button:focus-visible {
+  outline: 2px solid #9fd2cd;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .phenotype-summary ul {
   display: flex;
   flex-direction: column;

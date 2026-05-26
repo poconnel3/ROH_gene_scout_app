@@ -29,6 +29,8 @@ ROH Bp linear position:
   chrX:52100000-62400000
 Total: 188.22 Mb`;
 
+const HPO_TERM_PREVIEW_LIMIT = 8;
+
 export default function RohAnalyzer() {
   const [reportText, setReportText] = useState("");
   const [query, setQuery] = useState("");
@@ -36,6 +38,7 @@ export default function RohAnalyzer() {
   const [apiError, setApiError] = useState("");
   const [analysis, setAnalysis] = useState(null);
   const [expandedGenes, setExpandedGenes] = useState(() => new Set());
+  const [expandedHpoGroups, setExpandedHpoGroups] = useState(() => new Set());
 
   const parsed = useMemo(() => parseRohIntervals(reportText), [reportText]);
   const uniqueGeneRows = useMemo(() => summarizeUniqueGenes(analysis?.results || []), [analysis]);
@@ -70,6 +73,7 @@ export default function RohAnalyzer() {
       }
       setAnalysis(payload);
       setExpandedGenes(new Set());
+      setExpandedHpoGroups(new Set());
       setStatus("success");
     } catch (error) {
       setApiError(error.message);
@@ -79,6 +83,15 @@ export default function RohAnalyzer() {
 
   function toggleGene(key) {
     setExpandedGenes((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleHpoGroup(key) {
+    setExpandedHpoGroups((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -273,6 +286,7 @@ export default function RohAnalyzer() {
               ) : (
                 filteredRows.map((row) => {
                   const open = expandedGenes.has(row.key);
+                  const hpoGroups = getHpoTermGroups(row.phenotypes);
                   return (
                     <tr className={open ? "expanded" : ""} key={row.key}>
                       <td>
@@ -298,20 +312,38 @@ export default function RohAnalyzer() {
                       </td>
                       <td>
                         <div className="hpo-term-groups">
-                          {getHpoTermGroups(row.phenotypes).length === 0 ? (
+                          {hpoGroups.length === 0 ? (
                             <span className="muted-cell">No HPO phenotype terms listed</span>
                           ) : (
-                            getHpoTermGroups(row.phenotypes).map((group) => (
-                              <div className="hpo-term-group" key={`${row.key}-${group.key}`}>
-                                <strong>{group.conditionName}</strong>
-                                <ul>
-                                  {group.terms.slice(0, 8).map((term) => (
-                                    <li key={`${group.key}-${term.hpoId || term.name}`}>{term.name}</li>
-                                  ))}
-                                  {group.terms.length > 8 && <li className="overflow-term">+{group.terms.length - 8} more</li>}
-                                </ul>
-                              </div>
-                            ))
+                            hpoGroups.map((group) => {
+                              const expansionKey = getHpoGroupExpansionKey(row.key, group.key);
+                              const expanded = expandedHpoGroups.has(expansionKey);
+                              const hiddenTermCount = Math.max(0, group.terms.length - HPO_TERM_PREVIEW_LIMIT);
+                              const visibleTerms = expanded ? group.terms : group.terms.slice(0, HPO_TERM_PREVIEW_LIMIT);
+
+                              return (
+                                <div className="hpo-term-group" key={`${row.key}-${group.key}`}>
+                                  <strong>{group.conditionName}</strong>
+                                  <ul>
+                                    {visibleTerms.map((term) => (
+                                      <li key={`${group.key}-${term.hpoId || term.name}`}>{term.name}</li>
+                                    ))}
+                                    {hiddenTermCount > 0 && (
+                                      <li className="overflow-term">
+                                        <button
+                                          className="hpo-overflow-button"
+                                          type="button"
+                                          aria-expanded={expanded}
+                                          onClick={() => toggleHpoGroup(expansionKey)}
+                                        >
+                                          {expanded ? "Show fewer" : `+${hiddenTermCount} more`}
+                                        </button>
+                                      </li>
+                                    )}
+                                  </ul>
+                                </div>
+                              );
+                            })
                           )}
                         </div>
                       </td>
@@ -452,6 +484,10 @@ function getHpoTermGroups(phenotypes) {
       terms: getUniqueHpoTerms(phenotype.hpoTerms)
     }))
     .filter((group) => group.terms.length > 0);
+}
+
+function getHpoGroupExpansionKey(rowKey, groupKey) {
+  return `${rowKey}::${groupKey}`;
 }
 
 function getUniqueHpoTerms(terms) {

@@ -63,6 +63,58 @@ X 3000 4000
   ]);
 });
 
+test("extracts AOH intervals from array cytoband table rows", () => {
+  const result = parseRohIntervals(`
+AOH Region [hg19]                               Size (bp)
+.        No. of Gene
+.        arr 1p31.1(75,592,228-82,395,691)x2 hmz         6,803,464  72
+.        arr 2q11.2q14.1(101,877,339-116,330,802)x2 hmz  14,453,464
+.        195
+.        arr 3p14.1(64,352,801-68,463,132)x2 hmz         4,110,332  23
+.        arr 4p13p12(41,672,599-48,036,737)x2 hmz        6,364,139  53
+.        arr 6q21q22.31(106,949,394-120,108,162)x2 hmz   13,158,769
+.        169
+.        arr 7p22.1p21.3(4,593,407-13,683,216)x2 hmz     9,089,810
+.        106
+.        arr 7q31.2q31.31(114,786,932-120,722,820)x2 hmz 5,935,889  39
+.        arr 8q13.2q13.3(68,389,968-72,636,606)x2 hmz    4,246,639  46
+.        arr 9q33.2q34.12(124,633,018-133,939,646)x2 hmz 9,306,629
+.        199
+.        arr 12q21.31q21.33(85,766,847-89,481,885)x2 hmz 3,715,039  20
+.        arr 20p13p12.2(4,614,979-10,167,541)x2 hmz      5,552,563  56
+`);
+
+  assert.deepEqual(result.intervals, [
+    { chromosome: "chr1", start: 75592228, end: 82395691 },
+    { chromosome: "chr2", start: 101877339, end: 116330802 },
+    { chromosome: "chr3", start: 64352801, end: 68463132 },
+    { chromosome: "chr4", start: 41672599, end: 48036737 },
+    { chromosome: "chr6", start: 106949394, end: 120108162 },
+    { chromosome: "chr7", start: 4593407, end: 13683216 },
+    { chromosome: "chr7", start: 114786932, end: 120722820 },
+    { chromosome: "chr8", start: 68389968, end: 72636606 },
+    { chromosome: "chr9", start: 124633018, end: 133939646 },
+    { chromosome: "chr12", start: 85766847, end: 89481885 },
+    { chromosome: "chr20", start: 4614979, end: 10167541 }
+  ]);
+  assert.equal(result.warnings.length, 0);
+});
+
+test("supports expanded AOH terminology and standalone hmz array rows while rejecting CNVs", () => {
+  const result = parseRohIntervals(`
+Absence of heterozygosity regions:
+arr[hg19] Xq21.1q21.2(84,000,000_86,000,000)x2 hmz
+arr[hg19] 5q31.1(130,000,000-131,000,000)x1 deletion
+arr[hg19] 6p21.1(42,000,000-43,000,000)x3 gain
+`);
+
+  assert.deepEqual(result.intervals, [{ chromosome: "chrX", start: 84000000, end: 86000000 }]);
+
+  const standalone = parseRohIntervals("arr 7q11.1q11.2(60,000,000-62,000,000)x2 hmz");
+  assert.deepEqual(standalone.intervals, [{ chromosome: "chr7", start: 60000000, end: 62000000 }]);
+  assert.match(standalone.warnings.join("\n"), /No explicit ROH\/AOH heading/i);
+});
+
 test("ignores unsupported, duplicate, reversed, and copy-number intervals with warnings", () => {
   const result = parseRohIntervals(`
 ROH Bp linear position:
